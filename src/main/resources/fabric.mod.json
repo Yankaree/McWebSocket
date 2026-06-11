@@ -1,0 +1,38 @@
+{
+	"schemaVersion": 1,
+	"id": "mcwebsocket",
+	"version": "${version}",
+	"name": "McWebSocket",
+	"description": "Fabric mod that uses WebSocket to transmit in-game events like achievements and player deaths. Designed for server-side use.",
+	"authors": [
+		"Me!"
+	],
+	"contact": {
+		"homepage": "https://fabricmc.net/",
+		"sources": "https://github.com/FabricMC/fabric-example-mod"
+	},
+	"license": "CC0-1.0",
+	"icon": "assets/mcwebsocket/icon.png",
+	"environment": "*",
+	"entrypoints": {
+		"main": [
+			"me.ngcsonsplash.mcwebsocket.McWebSocket"
+		],
+		"client": [
+			"me.ngcsonsplash.mcwebsocket.client.McWebSocketClient"
+		]
+	},
+	"mixins": [
+		"mcwebsocket.mixins.json",
+		{
+			"config": "mcwebsocket.client.mixins.json",
+			"environment": "client"
+		}
+	],
+	"depends": {
+		"fabricloader": ">=0.19.3",
+		"minecraft": "~26.1.2",
+		"java": ">=25",
+		"fabric-api": "*"
+	}
+}
