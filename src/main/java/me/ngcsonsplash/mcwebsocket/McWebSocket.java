@@ -35,7 +35,6 @@ public class McWebSocket implements ModInitializer {
 		// Client-side disabling logic
 		if (FabricLoader.getInstance().getEnvironmentType() == EnvType.CLIENT) {
 			LOGGER.info("Mod hiện tại chỉ thiết kế cho server-side, mod sẽ tự động tắt sau khi tin nhắn này được hiển thị, và rồi disable mod này (nếu ở client) server không liên quan.");
-			// Effectively disable the mod on the client by not initializing server-side components
 			return;
 		}
 
@@ -82,9 +81,9 @@ public class McWebSocket implements ModInitializer {
 			dispatcher.register(Commands.literal("mcwebsocket")
 				.then(Commands.literal("reload")
 					.executes(context -> {
-						// Manual permission check: check if the source is a player and is OP
+						// Manual permission check
 						if (context.getSource().getEntity() instanceof ServerPlayer) {
-							if (!minecraftServer.getPlayerList().isOp(((ServerPlayer) context.getSource().getEntity()).getGameProfile())) {
+							if (!((ServerPlayer) context.getSource().getEntity()).hasPermissions(4)) {
 								context.getSource().sendSystemMessage(Component.literal("§cBạn không có quyền sử dụng lệnh này."));
 								return 0;
 							}
@@ -125,7 +124,7 @@ public class McWebSocket implements ModInitializer {
 					.executes(context -> {
 						// Manual permission check
 						if (context.getSource().getEntity() instanceof ServerPlayer) {
-							if (!minecraftServer.getPlayerList().isOp(((ServerPlayer) context.getSource().getEntity()).getGameProfile())) {
+							if (!((ServerPlayer) context.getSource().getEntity()).hasPermissions(4)) {
 								context.getSource().sendSystemMessage(Component.literal("§cBạn không có quyền sử dụng lệnh này."));
 								return 0;
 							}
