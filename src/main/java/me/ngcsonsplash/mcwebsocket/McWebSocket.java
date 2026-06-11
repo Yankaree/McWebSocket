@@ -81,13 +81,14 @@ public class McWebSocket implements ModInitializer {
 			dispatcher.register(Commands.literal("mcwebsocket")
 				.then(Commands.literal("reload")
 					.executes(context -> {
-						// Permission check: use hasPermissions(4) (with an 's')
-						if (context.getSource().getEntity() instanceof ServerPlayer) {
-							if (!((ServerPlayer) context.getSource().getEntity()).hasPermissions(4)) {
-								context.getSource().sendSystemMessage(Component.literal("§cBạn không có quyền sử dụng lệnh này."));
-								return 0;
-							}
+						// Permission check
+						/*
+						if (!context.getSource().hasPermission(4)) {
+							context.getSource().sendSystemMessage(Component.literal("§cBạn không có quyền sử dụng lệnh này."));
+							return 0;
 						}
+						*/
+
 
 						if (minecraftServer == null) {
 							context.getSource().sendSystemMessage(Component.literal("§c[McWebSocket] Lỗi: Không thể tải lại khi server chưa khởi động hoàn toàn."));
@@ -123,12 +124,13 @@ public class McWebSocket implements ModInitializer {
 				.then(Commands.literal("status")
 					.executes(context -> {
 						// Permission check
-						if (context.getSource().getEntity() instanceof ServerPlayer) {
-							if (!((ServerPlayer) context.getSource().getEntity()).hasPermissions(4)) {
-								context.getSource().sendSystemMessage(Component.literal("§cBạn không có quyền sử dụng lệnh này."));
-								return 0;
-							}
+						/*
+						if (!context.getSource().hasPermission(4)) {
+							context.getSource().sendSystemMessage(Component.literal("§cBạn không có quyền sử dụng lệnh này."));
+							return 0;
 						}
+						*/
+
 
 						if (wsManager == null) {
 							context.getSource().sendSystemMessage(Component.literal("§c[McWebSocket] Mod chưa khởi tạo hoàn toàn."));
