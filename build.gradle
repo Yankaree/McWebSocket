@@ -28,11 +28,12 @@ loom {
 
 dependencies {
 	// To change the versions see the gradle.properties file
-	minecraft "com.mojang:minecraft:${project.minecraft_version}"
-	implementation "net.fabricmc:fabric-loader:${project.loader_version}"
+	add("minecraft", "com.mojang:minecraft:${project.minecraft_version}")
+	add("mappings", "net.fabricmc:yarn:${project.yarn_mappings}:v2")
+	add("modImplementation", "net.fabricmc:fabric-loader:${project.loader_version}")
 
 	// Fabric API. This is technically optional, but you probably want it anyway.
-	implementation "net.fabricmc.fabric-api:fabric-api:${project.fabric_api_version}"
+	add("modImplementation", "net.fabricmc.fabric-api:fabric-api:${project.fabric_api_version}")
 	implementation "org.java-websocket:Java-WebSocket:1.5.6"
 
 }
