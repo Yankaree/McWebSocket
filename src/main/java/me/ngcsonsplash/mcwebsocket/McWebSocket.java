@@ -11,7 +11,6 @@ import net.fabricmc.loader.api.FabricLoader;
 import net.minecraft.commands.Commands;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.MinecraftServer;
-import net.minecraft.server.level.ServerPlayer;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -47,7 +46,7 @@ public class McWebSocket implements ModInitializer {
 			wsManager = new WebSocketClientManager(config.getWebsocketUri(), config.getMaxReconnectionAttempts(), this::broadcastWebSocketMessage);
 		} catch (URISyntaxException e) {
 			LOGGER.error("Invalid WebSocket URI in config: " + config.getWebsocketUri(), e);
-			return; // Cannot proceed without a valid URI
+			return; // Cannot proceed without a valid URI;
 		}
 
 		// Register server lifecycle events for WebSocket connection management
@@ -64,16 +63,14 @@ public class McWebSocket implements ModInitializer {
 
 		// Register event for player chat messages
 		ServerMessageEvents.CHAT_MESSAGE.register((message, sender, metadata) -> {
-			// Using decoratedContent().getString() for 1.21+ / 26.1+
 			String chatText = message.decoratedContent().getString();
 			String formattedMessage = String.format("[MC] %s %s", sender.getName().getString(), chatText);
 			wsManager.send(formattedMessage);
 			LOGGER.debug("Sent chat message: " + formattedMessage);
 		});
 
-		// Register event for player death
+		// Register event for player death (using AFTER_RESPAWN for compatibility)
 		ServerPlayerEvents.AFTER_RESPAWN.register((oldPlayer, newPlayer, conqueredRun) -> {
-			// Using AFTER_RESPAWN as a fallback if AFTER_DEATH is missing in this API version
 			String message = String.format("%s respawned after death", oldPlayer.getName().getString());
 			wsManager.send(message);
 			LOGGER.debug("Sent death/respawn message: " + message);
@@ -82,9 +79,14 @@ public class McWebSocket implements ModInitializer {
 		// Register commands
 		CommandRegistrationCallback.EVENT.register((dispatcher, registryAccess, environment) -> {
 			dispatcher.register(Commands.literal("mcwebsocket")
-				.requires(source -> source.hasPermission(4)) // OPs only
 				.then(Commands.literal("reload")
 					.executes(context -> {
+						// Manual permission check
+						if (!context.getSource().hasPermission(4)) {
+							context.getSource().sendSystemMessage(Component.literal("§cBạn không có quyền sử dụng lệnh này."));
+							return 0;
+						}
+
 						if (minecraftServer == null) {
 							context.getSource().sendSystemMessage(Component.literal("§c[McWebSocket] Lỗi: Không thể tải lại khi server chưa khởi động hoàn toàn."));
 							return 0;
@@ -118,6 +120,12 @@ public class McWebSocket implements ModInitializer {
 					}))
 				.then(Commands.literal("status")
 					.executes(context -> {
+						// Manual permission check
+						if (!context.getSource().hasPermission(4)) {
+							context.getSource().sendSystemMessage(Component.literal("§cBạn không có quyền sử dụng lệnh này."));
+							return 0;
+						}
+
 						if (wsManager == null) {
 							context.getSource().sendSystemMessage(Component.literal("§c[McWebSocket] Mod chưa khởi tạo hoàn toàn."));
 							return 0;
