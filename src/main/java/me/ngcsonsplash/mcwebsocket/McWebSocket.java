@@ -81,9 +81,9 @@ public class McWebSocket implements ModInitializer {
 			dispatcher.register(Commands.literal("mcwebsocket")
 				.then(Commands.literal("reload")
 					.executes(context -> {
-						// Permission check: use hasPermission(4) (if available) or fallback to simple check
+						// Permission check: use hasPermissions(4) (with an 's')
 						if (context.getSource().getEntity() instanceof ServerPlayer) {
-							if (!((ServerPlayer) context.getSource().getEntity()).hasPermission(4)) {
+							if (!((ServerPlayer) context.getSource().getEntity()).hasPermissions(4)) {
 								context.getSource().sendSystemMessage(Component.literal("§cBạn không có quyền sử dụng lệnh này."));
 								return 0;
 							}
@@ -124,7 +124,7 @@ public class McWebSocket implements ModInitializer {
 					.executes(context -> {
 						// Permission check
 						if (context.getSource().getEntity() instanceof ServerPlayer) {
-							if (!((ServerPlayer) context.getSource().getEntity()).hasPermission(4)) {
+							if (!((ServerPlayer) context.getSource().getEntity()).hasPermissions(4)) {
 								context.getSource().sendSystemMessage(Component.literal("§cBạn không có quyền sử dụng lệnh này."));
 								return 0;
 							}
