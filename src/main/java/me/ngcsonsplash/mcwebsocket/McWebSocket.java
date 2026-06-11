@@ -5,13 +5,13 @@ import net.fabricmc.api.ModInitializer;
 import net.fabricmc.fabric.api.command.v2.CommandRegistrationCallback;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents;
 import net.fabricmc.fabric.api.entity.event.v1.ServerPlayerEvents;
+import net.fabricmc.fabric.api.entity.event.v1.ServerAdvancementEvents;
 import net.fabricmc.fabric.api.message.v1.ServerMessageEvents;
 import net.fabricmc.loader.api.FabricLoader;
 
 import net.minecraft.commands.Commands;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.MinecraftServer;
-import net.minecraft.server.level.ServerPlayer;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -64,14 +64,26 @@ public class McWebSocket implements ModInitializer {
 
 		// Register event for player chat messages
 		ServerMessageEvents.CHAT_MESSAGE.register((message, sender, metadata) -> {
+			// Using decoratedContent().getString() for 1.21+ / 26.1+
 			String formattedMessage = String.format("[MC] %s %s", sender.getName().getString(), message.decoratedContent().getString());
 			wsManager.send(formattedMessage);
 			LOGGER.debug("Sent chat message: " + formattedMessage);
 		});
 
-		// Advancement tracking using mixin-like or generic server events if specific ones fail
-		// For now, let's keep it simple and try to fix the existing death event first
-		
+		// Register event for player advancements
+		ServerAdvancementEvents.PLAYER_ADVANCEMENT_COMPLETE.register((player, advancement) -> {
+			advancement.value().display().ifPresent(display -> {
+				if (display.shouldAnnounceToChat()) {
+					Component messageText = Component.translatable("chat.type.advancement." + display.getType().getName(), 
+							player.getDisplayName(), 
+							display.getTitle());
+					String message = messageText.getString();
+					wsManager.send(message);
+					LOGGER.debug("Sent advancement message: " + message);
+				}
+			});
+		});
+
 		// Register event for player death
 		ServerPlayerEvents.AFTER_DEATH.register((player, source) -> {
 			Component deathMessage = player.getDamageTracker().getDeathMessage();
