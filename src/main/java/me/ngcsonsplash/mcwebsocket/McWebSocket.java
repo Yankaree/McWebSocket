@@ -11,6 +11,7 @@ import net.fabricmc.loader.api.FabricLoader;
 import net.minecraft.commands.Commands;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.MinecraftServer;
+import net.minecraft.server.level.ServerPlayer;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -81,10 +82,12 @@ public class McWebSocket implements ModInitializer {
 			dispatcher.register(Commands.literal("mcwebsocket")
 				.then(Commands.literal("reload")
 					.executes(context -> {
-						// Manual permission check
-						if (!context.getSource().hasPermission(4)) {
-							context.getSource().sendSystemMessage(Component.literal("§cBạn không có quyền sử dụng lệnh này."));
-							return 0;
+						// Manual permission check: check if the source is a player and is OP
+						if (context.getSource().getEntity() instanceof ServerPlayer) {
+							if (!minecraftServer.getPlayerList().isOp(((ServerPlayer) context.getSource().getEntity()).getGameProfile())) {
+								context.getSource().sendSystemMessage(Component.literal("§cBạn không có quyền sử dụng lệnh này."));
+								return 0;
+							}
 						}
 
 						if (minecraftServer == null) {
@@ -121,9 +124,11 @@ public class McWebSocket implements ModInitializer {
 				.then(Commands.literal("status")
 					.executes(context -> {
 						// Manual permission check
-						if (!context.getSource().hasPermission(4)) {
-							context.getSource().sendSystemMessage(Component.literal("§cBạn không có quyền sử dụng lệnh này."));
-							return 0;
+						if (context.getSource().getEntity() instanceof ServerPlayer) {
+							if (!minecraftServer.getPlayerList().isOp(((ServerPlayer) context.getSource().getEntity()).getGameProfile())) {
+								context.getSource().sendSystemMessage(Component.literal("§cBạn không có quyền sử dụng lệnh này."));
+								return 0;
+							}
 						}
 
 						if (wsManager == null) {
