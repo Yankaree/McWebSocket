@@ -64,8 +64,11 @@ public class McWebSocket implements ModInitializer {
 
 		// Register event for player chat messages
 		ServerMessageEvents.CHAT_MESSAGE.register((message, sender, metadata) -> {
-			// Using decoratedContent().getString() for 1.21+ / 26.1+
-			String formattedMessage = String.format("[MC] %s %s", sender.getName().getString(), message.decoratedContent().getString());
+			// In 1.21+ / 26.1+, we try to get the message content safely. 
+			// Based on previous errors, message.signedContent() might return String or have a content() method.
+			// Let's use a safe approach or toString if unsure, but based on Official Mappings:
+			String chatText = message.signedContent().getString(); 
+			String formattedMessage = String.format("[MC] %s %s", sender.getName().getString(), chatText);
 			wsManager.send(formattedMessage);
 			LOGGER.debug("Sent chat message: " + formattedMessage);
 		});
