@@ -5,13 +5,13 @@ import net.fabricmc.api.ModInitializer;
 import net.fabricmc.fabric.api.command.v2.CommandRegistrationCallback;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents;
 import net.fabricmc.fabric.api.entity.event.v1.ServerPlayerEvents;
-import net.fabricmc.fabric.api.entity.event.v1.ServerAdvancementEvents;
 import net.fabricmc.fabric.api.message.v1.ServerMessageEvents;
 import net.fabricmc.loader.api.FabricLoader;
 
 import net.minecraft.commands.Commands;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.MinecraftServer;
+import net.minecraft.server.level.ServerPlayer;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -64,35 +64,19 @@ public class McWebSocket implements ModInitializer {
 
 		// Register event for player chat messages
 		ServerMessageEvents.CHAT_MESSAGE.register((message, sender, metadata) -> {
-			// In 1.21+ / 26.1+, we try to get the message content safely. 
-			// Based on previous errors, message.signedContent() might return String or have a content() method.
-			// Let's use a safe approach or toString if unsure, but based on Official Mappings:
-			String chatText = message.signedContent().getString(); 
+			// Using decoratedContent().getString() for 1.21+ / 26.1+
+			String chatText = message.decoratedContent().getString();
 			String formattedMessage = String.format("[MC] %s %s", sender.getName().getString(), chatText);
 			wsManager.send(formattedMessage);
 			LOGGER.debug("Sent chat message: " + formattedMessage);
 		});
 
-		// Register event for player advancements
-		ServerAdvancementEvents.PLAYER_ADVANCEMENT_COMPLETE.register((player, advancement) -> {
-			advancement.value().display().ifPresent(display -> {
-				if (display.shouldAnnounceToChat()) {
-					Component messageText = Component.translatable("chat.type.advancement." + display.getType().getName(), 
-							player.getDisplayName(), 
-							display.getTitle());
-					String message = messageText.getString();
-					wsManager.send(message);
-					LOGGER.debug("Sent advancement message: " + message);
-				}
-			});
-		});
-
 		// Register event for player death
-		ServerPlayerEvents.AFTER_DEATH.register((player, source) -> {
-			Component deathMessage = player.getDamageTracker().getDeathMessage();
-			String message = deathMessage.getString();
+		ServerPlayerEvents.AFTER_RESPAWN.register((oldPlayer, newPlayer, conqueredRun) -> {
+			// Using AFTER_RESPAWN as a fallback if AFTER_DEATH is missing in this API version
+			String message = String.format("%s respawned after death", oldPlayer.getName().getString());
 			wsManager.send(message);
-			LOGGER.debug("Sent death message: " + message);
+			LOGGER.debug("Sent death/respawn message: " + message);
 		});
 
 		// Register commands
