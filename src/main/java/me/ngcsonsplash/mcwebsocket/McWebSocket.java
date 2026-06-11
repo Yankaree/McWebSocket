@@ -5,13 +5,14 @@ import net.fabricmc.api.ModInitializer;
 import net.fabricmc.fabric.api.command.v2.CommandRegistrationCallback;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents;
 import net.fabricmc.fabric.api.entity.event.v1.ServerPlayerEvents;
-import net.fabricmc.fabric.api.event.player.PlayerAdvancementCallback;
+import net.fabricmc.fabric.api.entity.event.v1.ServerAdvancementEvents;
 import net.fabricmc.fabric.api.message.v1.ServerMessageEvents;
 import net.fabricmc.loader.api.FabricLoader;
 
-import net.minecraft.server.command.CommandManager;
-import net.minecraft.text.Text;
+import net.minecraft.commands.Commands;
+import net.minecraft.network.chat.Component;
 import net.minecraft.server.MinecraftServer;
+import net.minecraft.server.level.ServerPlayer;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -63,27 +64,29 @@ public class McWebSocket implements ModInitializer {
 		});
 
 		// Register event for player chat messages
-		ServerMessageEvents.CHAT_MESSAGE.register((message, sender, params) -> {
-			String formattedMessage = String.format("[MC] %s %s", sender.getName().getString(), message.getContent().getString());
+		ServerMessageEvents.CHAT_MESSAGE.register((message, sender, metadata) -> {
+			String formattedMessage = String.format("[MC] %s %s", sender.getName().getString(), message.signedContent().content().getString());
 			wsManager.send(formattedMessage);
 			LOGGER.debug("Sent chat message: " + formattedMessage);
 		});
 
 		// Register event for player advancements
-		PlayerAdvancementCallback.EVENT.register((player, advancement, criterionName) -> {
-			if (advancement.getDisplay() != null && advancement.getDisplay().shouldAnnounceToChat()) {
-				Text messageText = Text.translatable("chat.type.advancement." + advancement.getDisplay().getType().getName(), 
-						player.getDisplayName(), 
-						advancement.getDisplay().getTitle());
-				String message = messageText.getString();
-				wsManager.send(message);
-				LOGGER.debug("Sent advancement message: " + message);
-			}
+		ServerAdvancementEvents.PLAYER_ADVANCEMENT_COMPLETE.register((player, advancement) -> {
+			advancement.value().display().ifPresent(display -> {
+				if (display.shouldAnnounceToChat()) {
+					Component messageText = Component.translatable("chat.type.advancement." + display.getType().getName(), 
+							player.getDisplayName(), 
+							display.getTitle());
+					String message = messageText.getString();
+					wsManager.send(message);
+					LOGGER.debug("Sent advancement message: " + message);
+				}
+			});
 		});
 
 		// Register event for player death
-		ServerPlayerEvents.AFTER_DEATH.register((originalPlayer, newPlayer, conqueredRun) -> {
-			Text deathMessage = originalPlayer.getDamageTracker().getDeathMessage();
+		ServerPlayerEvents.AFTER_DEATH.register((player, source) -> {
+			Component deathMessage = player.getDamageTracker().getDeathMessage();
 			String message = deathMessage.getString();
 			wsManager.send(message);
 			LOGGER.debug("Sent death message: " + message);
@@ -91,12 +94,12 @@ public class McWebSocket implements ModInitializer {
 
 		// Register commands
 		CommandRegistrationCallback.EVENT.register((dispatcher, registryAccess, environment) -> {
-			dispatcher.register(CommandManager.literal("mcwebsocket")
+			dispatcher.register(Commands.literal("mcwebsocket")
 				.requires(source -> source.hasPermissionLevel(4)) // OPs only
-				.then(CommandManager.literal("reload")
+				.then(Commands.literal("reload")
 					.executes(context -> {
 						if (minecraftServer == null) {
-							context.getSource().sendFeedback(() -> Text.literal("§c[McWebSocket] Lỗi: Không thể tải lại khi server chưa khởi động hoàn toàn."), false);
+							context.getSource().sendFeedback(() -> Component.literal("§c[McWebSocket] Lỗi: Không thể tải lại khi server chưa khởi động hoàn toàn."), false);
 							return 0;
 						}
 
@@ -113,26 +116,24 @@ public class McWebSocket implements ModInitializer {
 							wsManager = new WebSocketClientManager(config.getWebsocketUri(), config.getMaxReconnectionAttempts(), this::broadcastWebSocketMessage);
 						} catch (URISyntaxException e) {
 							LOGGER.error("Invalid WebSocket URI in reloaded config: " + config.getWebsocketUri(), e);
-							context.getSource().sendFeedback(() -> Text.literal("§c[McWebSocket] Lỗi khi tải lại cấu hình: URI WebSocket không hợp lệ."), false);
+							context.getSource().sendFeedback(() -> Component.literal("§c[McWebSocket] Lỗi khi tải lại cấu hình: URI WebSocket không hợp lệ."), false);
 							return 0;
 						}
 
 						// Reset reconnection attempts and try to connect
 						wsManager.resetReconnectionAttempts();
 						// Use the stored server reference to trigger a connect if server is already started
-						// This ensures the connection attempt happens after server is ready
-						// (The server lifecycle event is not truly "re-invoked" here, we just call connect directly if server is running)
 						if (minecraftServer != null && minecraftServer.isRunning()) {
 							wsManager.connect();
 						}
 
-						context.getSource().sendFeedback(() -> Text.literal("§a[McWebSocket] Đã tải lại cấu hình và cố gắng kết nối lại WebSocket. Trạng thái hiện tại: " + wsManager.getConnectionStatus().getVietnameseStatus()), false);
+						context.getSource().sendFeedback(() -> Component.literal("§a[McWebSocket] Đã tải lại cấu hình và cố gắng kết nối lại WebSocket. Trạng thái hiện tại: " + wsManager.getConnectionStatus().getVietnameseStatus()), false);
 						return 1;
 					}))
-				.then(CommandManager.literal("status")
+				.then(Commands.literal("status")
 					.executes(context -> {
 						if (wsManager == null) {
-							context.getSource().sendFeedback(() -> Text.literal("§c[McWebSocket] Mod chưa khởi tạo hoàn toàn."), false);
+							context.getSource().sendFeedback(() -> Component.literal("§c[McWebSocket] Mod chưa khởi tạo hoàn toàn."), false);
 							return 0;
 						}
 						WebSocketClientManager.ConnectionStatus status = wsManager.getConnectionStatus();
@@ -140,7 +141,7 @@ public class McWebSocket implements ModInitializer {
 						if (status == WebSocketClientManager.ConnectionStatus.RECONNECTING) {
 							message += String.format(" (Đã thử %d/%d lần)", wsManager.getReconnectionAttempts(), wsManager.getMaxReconnectionAttempts());
 						}
-						context.getSource().sendFeedback(() -> Text.literal(message), false);
+						context.getSource().sendFeedback(() -> Component.literal(message), false);
 						return 1;
 					}))
 			);
@@ -152,9 +153,9 @@ public class McWebSocket implements ModInitializer {
 	private void broadcastWebSocketMessage(String message) {
 		if (minecraftServer != null) {
 			// Format the message with a prefix and Aqua color for distinction
-			Text formattedText = Text.literal("§b[WebSocket] " + message);
+			Component formattedText = Component.literal("§b[WebSocket] " + message);
 			minecraftServer.execute(() -> {
-				minecraftServer.getPlayerManager().broadcast(formattedText, false);
+				minecraftServer.getPlayerList().broadcastSystemMessage(formattedText, false);
 			});
 		}
 	}
